@@ -80,45 +80,54 @@ export function fetchQuickReplies() {
 
     // ***************************************************************
     // --- 修改：扫描 JS Runner 按钮 (增强功能) ---
-    // 使用原生的 document.querySelectorAll 来查找按钮，避免可能的 jQuery 兼容性问题
+    // 根据我们之前的讨论，使用正确的选择器来查找 JS Runner 按钮
     // ***************************************************************
-    console.log(`[${Constants.EXTENSION_NAME} Debug] Starting JS Runner button scan using native querySelectorAll...`);
+    console.log(`[${Constants.EXTENSION_NAME} Debug] Starting JS Runner button scan...`);
     try {
-        // 使用一个更直接的原生选择器来查找所有符合条件的按钮
-        // 根据截图结构：#qr--bar > .qr--buttons.th-button > .qr--button.menu_button.interactable
-        // 注意：这里使用了 > 组合器，表示直接子元素。如果结构可能变化，可以去掉 >
-        // 更安全的做法是查找所有容器，再在容器内查找按钮，但为了简洁和效率，先尝试直接查找
-        const jsRunnerButtons = document.querySelectorAll('#qr--bar .qr--buttons.th-button .qr--button.menu_button.interactable');
+        // 使用原生 DOM 查询代替 jQuery
+        const jsRunnerButtonContainers = document.querySelectorAll('#send_form #qr--bar .qr--buttons.th-button');
 
-        if (jsRunnerButtons.length > 0) {
-            console.log(`[${Constants.EXTENSION_NAME} Debug] Found ${jsRunnerButtons.length} potential JS Runner buttons using native querySelectorAll.`);
+        if (jsRunnerButtonContainers.length > 0) {
+            console.log(`[${Constants.EXTENSION_NAME} Debug] Found ${jsRunnerButtonContainers.length} JS Runner button containers.`);
 
             const scannedJsLabels = new Set(); // 用于防止重复添加 JS Runner 按钮
 
-            jsRunnerButtons.forEach(buttonDiv => { // 使用原生的 forEach 遍历 NodeList
-                const label = buttonDiv.textContent?.trim(); // 获取按钮上显示的文本作为 label
-                // 检查标签是否有效，并且尚未被标准QR或已扫描的JS按钮使用
-                if (label && label !== '' && !chatQrLabels.has(label) && !scannedJsLabels.has(label)) {
-                    console.log(`[${Constants.EXTENSION_NAME} Debug] Adding JS Runner button: Label='${label}'`);
-                    chatReplies.push({
-                        setName: 'JS脚本按钮',         // 自定义分类名
-                        label: label,                 // 按钮显示的文字
-                        message: `[JS Runner] ${label}`, // 内部标识符或提示文本
-                        isStandard: false             // 核心标记：表明不是标准QR
-                    });
-                    scannedJsLabels.add(label); // 记录已添加的JS按钮标签
-                    chatQrLabels.add(label);    // 也添加到总的标签集合，以防全局QR中添加同名项
-                } else if (label && (chatQrLabels.has(label) || scannedJsLabels.has(label))) {
-                     // 如果标签重复了，记录一下日志
-                     console.log(`[${Constants.EXTENSION_NAME} Debug] Skipping duplicate JS Runner button (label already exists): Label='${label}'`);
-                } else if (!label || label === '') {
-                    // 如果按钮没有有效标签，也记录一下
-                     console.log(`[${Constants.EXTENSION_NAME} Debug] Skipping JS Runner button with empty label.`);
-                }
+            jsRunnerButtonContainers.forEach(function(container) {
+                // 查找容器内的实际按钮元素
+                const jsRunnerButtons = container.querySelectorAll('.qr--button.menu_button.interactable');
+
+                jsRunnerButtons.forEach(function(buttonDiv) {
+                    // 改进获取文本的方式，优先查找专门的标签元素
+                    let label;
+                    const labelElement = buttonDiv.querySelector('.qr--button-label');
+                    if (labelElement) {
+                        label = labelElement.textContent?.trim();
+                    } else {
+                        // 后备方案：直接获取按钮的文本内容
+                        label = buttonDiv.textContent?.trim();
+                    }
+                    
+                    // 检查标签是否有效，并且尚未被标准QR或已扫描的JS按钮使用
+                    if (label && label !== '' && !chatQrLabels.has(label) && !scannedJsLabels.has(label)) {
+                        console.log(`[${Constants.EXTENSION_NAME} Debug] Adding JS Runner button: Label='${label}'`);
+                        chatReplies.push({
+                            setName: 'JS脚本按钮',         // 自定义分类名
+                            label: label,                 // 按钮显示的文字
+                            message: `[JS Runner] ${label}`, // 内部标识符或提示文本
+                            isStandard: false             // 核心标记：表明不是标准QR
+                        });
+                        scannedJsLabels.add(label); // 记录已添加的JS按钮标签
+                        chatQrLabels.add(label);    // 也添加到总的标签集合，以防全局QR中添加同名项
+                    } else if (label && (chatQrLabels.has(label) || scannedJsLabels.has(label))) {
+                        console.log(`[${Constants.EXTENSION_NAME} Debug] Skipping duplicate JS Runner button (label already exists): Label='${label}'`);
+                    } else if (!label || label === '') {
+                        console.log(`[${Constants.EXTENSION_NAME} Debug] Skipping JS Runner button with empty label.`);
+                    }
+                });
             });
-             console.log(`[${Constants.EXTENSION_NAME} Debug] Finished scanning JS Runner buttons. Added ${scannedJsLabels.size} unique buttons.`);
+            console.log(`[${Constants.EXTENSION_NAME} Debug] Finished scanning JS Runner buttons. Added ${scannedJsLabels.size} unique buttons.`);
         } else {
-            console.log(`[${Constants.EXTENSION_NAME} Debug] No JS Runner buttons found using native querySelectorAll('#qr--bar .qr--buttons.th-button .qr--button.menu_button.interactable').`);
+            console.log(`[${Constants.EXTENSION_NAME} Debug] No JS Runner button containers (.qr--buttons.th-button) found in the DOM.`);
         }
     } catch (error) {
         console.error(`[${Constants.EXTENSION_NAME}] Error during JS Runner button scanning:`, error);
