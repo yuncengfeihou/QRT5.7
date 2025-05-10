@@ -102,36 +102,41 @@ export async function handleQuickReplyClick(event) {
         // --- JS Runner 按钮代理行为：模拟点击原始按钮 ---
         console.log(`[${Constants.EXTENSION_NAME} Debug] Clicked JS Runner proxy for label: "${label}". Attempting to find and click original button...`);
         try {
-            // 使用原生 DOM API 查找按钮
-            const jsRunnerButtonContainers = document.querySelectorAll('#send_form #qr--bar .qr--buttons.th-button');
+            // 使用原生DOM API查找按钮
+            const qrBar = document.querySelector('#qr--bar');
+            if (!qrBar) {
+                console.error(`[${Constants.EXTENSION_NAME}] Could not find #qr--bar element when trying to click button`);
+                return;
+            }
+            
+            // 查找所有按钮容器
+            const jsRunnerButtonContainers = qrBar.querySelectorAll('.qr--buttons.th-button');
             let originalButtonToClick = null;
 
             if (jsRunnerButtonContainers.length > 0) {
                 console.log(`[${Constants.EXTENSION_NAME} Debug] Found ${jsRunnerButtonContainers.length} JS Runner button containers. Searching for button with label "${label}"...`);
 
-                // 遍历所有容器内的按钮，找到文本内容精确匹配的那一个
-                for (const container of jsRunnerButtonContainers) {
+                // 遍历所有容器寻找匹配按钮
+                searchLoop: for (const container of jsRunnerButtonContainers) {
                     const buttonsInContainer = container.querySelectorAll('.qr--button.menu_button.interactable');
                     
                     for (const btn of buttonsInContainer) {
-                        // 优先检查专门的标签元素
-                        let btnLabel;
+                        // 尝试多种方式获取按钮文本
+                        let btnLabel = '';
                         const labelElement = btn.querySelector('.qr--button-label');
+                        
                         if (labelElement) {
                             btnLabel = labelElement.textContent?.trim();
                         } else {
-                            // 后备方案：直接获取按钮的文本内容
                             btnLabel = btn.textContent?.trim();
                         }
                         
                         if (btnLabel === label) {
-                            originalButtonToClick = btn; // 保存找到的按钮
+                            originalButtonToClick = btn; // 找到匹配按钮
                             console.log(`[${Constants.EXTENSION_NAME} Debug] Found matching original JS Runner button.`);
-                            break; // 跳出内层循环
+                            break searchLoop; // 跳出所有循环
                         }
                     }
-                    
-                    if (originalButtonToClick) break; // 找到按钮后跳出外层循环
                 }
 
                 if (originalButtonToClick) {
