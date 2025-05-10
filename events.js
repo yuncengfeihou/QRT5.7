@@ -102,40 +102,47 @@ export async function handleQuickReplyClick(event) {
         // --- JS Runner 按钮代理行为：模拟点击原始按钮 ---
         console.log(`[${Constants.EXTENSION_NAME} Debug] Clicked JS Runner proxy for label: "${label}". Attempting to find and click original button...`);
         try {
-            // ***************************************************************
-            // --- 修改：使用与 api.js 中扫描一致的查找逻辑 ---
-            // 直接查找固定 ID 的容器，然后在其内部查找按钮
-            // ***************************************************************
-            const jsRunnerButtonContainerId = 'TH-script-buttons'; // JS Runner 按钮容器的固定 ID
-            const jsRunnerButtonSelector = '.qr--button.menu_button.interactable'; // JS Runner 按钮的选择器
-
-            const jsRunnerButtonContainer = document.getElementById(jsRunnerButtonContainerId);
+            // 使用原生 DOM API 查找按钮
+            const jsRunnerButtonContainers = document.querySelectorAll('#send_form #qr--bar .qr--buttons.th-button');
             let originalButtonToClick = null;
 
-            if (jsRunnerButtonContainer) {
-                 console.log(`[${Constants.EXTENSION_NAME} Debug] Found container #${jsRunnerButtonContainerId}. Searching for button with label "${label}"...`);
-                 const jsRunnerButtons = jsRunnerButtonContainer.querySelectorAll(jsRunnerButtonSelector);
+            if (jsRunnerButtonContainers.length > 0) {
+                console.log(`[${Constants.EXTENSION_NAME} Debug] Found ${jsRunnerButtonContainers.length} JS Runner button containers. Searching for button with label "${label}"...`);
 
                 // 遍历所有容器内的按钮，找到文本内容精确匹配的那一个
-                jsRunnerButtons.forEach(function(btn) {
-                    const btnLabel = btn.textContent?.trim(); // 获取原始按钮的文本
-                    // console.log(`[${Constants.EXTENSION_NAME} Debug] Checking candidate button with label: "${btnLabel}"`); // Verbose log if needed
-                    if (btnLabel === label) {
-                        originalButtonToClick = btn; // 获取原生 DOM 元素
-                        console.log(`[${Constants.EXTENSION_NAME} Debug] Found matching original JS Runner button.`);
-                        // 不需要 break，forEach 会继续，但我们只关心第一个匹配的
+                for (const container of jsRunnerButtonContainers) {
+                    const buttonsInContainer = container.querySelectorAll('.qr--button.menu_button.interactable');
+                    
+                    for (const btn of buttonsInContainer) {
+                        // 优先检查专门的标签元素
+                        let btnLabel;
+                        const labelElement = btn.querySelector('.qr--button-label');
+                        if (labelElement) {
+                            btnLabel = labelElement.textContent?.trim();
+                        } else {
+                            // 后备方案：直接获取按钮的文本内容
+                            btnLabel = btn.textContent?.trim();
+                        }
+                        
+                        if (btnLabel === label) {
+                            originalButtonToClick = btn; // 保存找到的按钮
+                            console.log(`[${Constants.EXTENSION_NAME} Debug] Found matching original JS Runner button.`);
+                            break; // 跳出内层循环
+                        }
                     }
-                });
+                    
+                    if (originalButtonToClick) break; // 找到按钮后跳出外层循环
+                }
 
                 if (originalButtonToClick) {
                     console.log(`[${Constants.EXTENSION_NAME} Debug] Simulating click on original button:`, originalButtonToClick);
-                    originalButtonToClick.click(); // <<< 模拟点击 >>>
+                    originalButtonToClick.click(); // 模拟点击找到的按钮
                     console.log(`[${Constants.EXTENSION_NAME}] Click successfully simulated on original button for "${label}".`);
                 } else {
                     console.error(`[${Constants.EXTENSION_NAME}] Could not find the original JS Runner button with label "${label}" in the DOM to simulate click.`);
                 }
             } else {
-                console.error(`[${Constants.EXTENSION_NAME}] JS Runner button container #${jsRunnerButtonContainerId} NOT FOUND in the DOM.`);
+                console.error(`[${Constants.EXTENSION_NAME}] No JS Runner button containers (.qr--buttons.th-button) found in the DOM.`);
             }
         } catch (error) {
             console.error(`[${Constants.EXTENSION_NAME}] Error simulating click on JS Runner button for "${label}":`, error);
