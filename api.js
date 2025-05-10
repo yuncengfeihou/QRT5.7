@@ -78,32 +78,38 @@ export function fetchQuickReplies() {
         }
     }
 
-    // ***************************************************************
     // --- 修改：扫描 JS Runner 按钮 (增强功能) ---
-    // 根据我们之前的讨论，使用正确的选择器来查找 JS Runner 按钮
-    // ***************************************************************
     console.log(`[${Constants.EXTENSION_NAME} Debug] Starting JS Runner button scan...`);
     try {
-        // 使用原生 DOM 查询代替 jQuery
-        const jsRunnerButtonContainers = document.querySelectorAll('#send_form #qr--bar .qr--buttons.th-button');
-
+        // 使用原生DOM API查找按钮容器
+        const qrBar = document.querySelector('#qr--bar');
+        if (!qrBar) {
+            console.error(`[${Constants.EXTENSION_NAME}] Could not find #qr--bar element`);
+            return { chat: chatReplies, global: globalReplies };
+        }
+        
+        // 查找所有可能的按钮容器 (.qr--buttons.th-button)
+        const jsRunnerButtonContainers = qrBar.querySelectorAll('.qr--buttons.th-button');
+        
         if (jsRunnerButtonContainers.length > 0) {
             console.log(`[${Constants.EXTENSION_NAME} Debug] Found ${jsRunnerButtonContainers.length} JS Runner button containers.`);
 
             const scannedJsLabels = new Set(); // 用于防止重复添加 JS Runner 按钮
 
-            jsRunnerButtonContainers.forEach(function(container) {
+            // 遍历每个按钮容器
+            jsRunnerButtonContainers.forEach(container => {
                 // 查找容器内的实际按钮元素
                 const jsRunnerButtons = container.querySelectorAll('.qr--button.menu_button.interactable');
-
-                jsRunnerButtons.forEach(function(buttonDiv) {
-                    // 改进获取文本的方式，优先查找专门的标签元素
-                    let label;
+                
+                // 遍历每个按钮
+                jsRunnerButtons.forEach(buttonDiv => {
+                    // 尝试多种方式获取按钮文本
+                    let label = '';
                     const labelElement = buttonDiv.querySelector('.qr--button-label');
+                    
                     if (labelElement) {
                         label = labelElement.textContent?.trim();
                     } else {
-                        // 后备方案：直接获取按钮的文本内容
                         label = buttonDiv.textContent?.trim();
                     }
                     
